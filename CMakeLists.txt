@@ -1,37 +1,23 @@
-cmake_minimum_required(VERSION 3.4)
-project(lab06)
+cmake_minimum_required(VERSION 3.22)
+project(lab03)
 
-include(cmake/HunterGate.cmake)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.251.tar.gz"
-    SHA1 "aa0b179b28918ea1c1e0d2c56e4dcbf9e4e957f4"
-)
+option(CODE_COVERAGE "Enable coverage reporting" ON)
 
-hunter_add_package(GTest)
-find_package(GTest CONFIG REQUIRED)
 
-add_library(print sources/print.cpp)
-target_include_directories(print PUBLIC include)
+if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    message(STATUS "Code coverage enabled")
+    add_compile_options(--coverage -O0 -g)
+    add_link_options(--coverage)
+endif()
 
-add_executable(example1 examples/example1.cpp)
-target_link_libraries(example1 print)
+add_subdirectory(formatter_lib)
+add_subdirectory(formatter_ex_lib)
+add_subdirectory(solver_lib)
+add_subdirectory(banking)
+add_subdirectory(tests)
+add_subdirectory(hello_world_application)
+add_subdirectory(solver_application)
 
-add_executable(example2 examples/example2.cpp)
-target_link_libraries(example2 print)
-
-add_executable(test1 tests/test1.cpp)
-target_link_libraries(test1 print GTest::gtest GTest::gtest_main)
-
-add_executable(test_print tests/test_print.cpp)
-target_link_libraries(test_print print GTest::gtest GTest::gtest_main)
-
-enable_testing()
-add_test(NAME test1 COMMAND test1)
-add_test(NAME test_print COMMAND test_print)
-
-add_executable(demo demo/main.cpp)
-target_link_libraries(demo print)
-
-install(TARGETS print demo DESTINATION bin)
-install(DIRECTORY include/ DESTINATION include)

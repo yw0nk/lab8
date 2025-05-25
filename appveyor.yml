@@ -1,0 +1,9 @@
+image: Visual Studio 2022
+
+build_script:
+  - cmake -S . -B build
+  - cmake --build build
+
+branches:
+  only:
+    - main

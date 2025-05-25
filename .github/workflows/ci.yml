@@ -1,0 +1,43 @@
+name: Build and Coveralls
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v1
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y lcov gcovr cmake g++ clang make
+
+      - name: Build with coverage
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=ON
+          cmake --build build
+          cd build && ctest
+
+      - name: Generate lcov report
+        run: |
+          lcov --capture --directory build --output-file coverage.info --no-external --ignore-errors mismatch
+          lcov --list coverage.info
+
+      - name: Upload to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: coverage.info

@@ -1,0 +1,1 @@
+[![Coverage Status](https://coveralls.io/repos/github/yw0nk/lab05/badge.svg?branch=main)](https://coveralls.io/github/yw0nk/lab05?branch=main)
