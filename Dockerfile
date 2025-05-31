@@ -1,41 +1,41 @@
-
 FROM ubuntu:24.04
-
 
 RUN apt-get update && apt-get install -y \
     build-essential \
+    cmake \
     git \
-    wget \
-    curl \
-    libssl-dev \
-    zlib1g-dev \
-    pkg-config \
+    lcov \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /tmp
-RUN wget https://cmake.org/files/v3.29/cmake-3.29.2.tar.gz && \
-    tar -xzvf cmake-3.29.2.tar.gz && \
-    cd cmake-3.29.2 && \
-    ./bootstrap && \
-    make -j$(nproc) && \
-    make install && \
-    cd / && rm -rf /tmp/*
-
 
 COPY . /app
 WORKDIR /app
 
 
-RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && \
-    cmake --build build --target solver_application
+RUN git submodule init && git submodule update
+
+RUN mkdir -p build
 
 
-ENV LOG_PATH=/logs/log.txt
+RUN cd build && \
+    cmake -DCOVERAGE=ON -DCMAKE_BUILD_TYPE=Release .. && \
+    cmake --build . --config Release --parallel $(nproc)
 
-WORKDIR /app/build/solver_application
+
+RUN cd build && ./RunTest
 
 
-VOLUME /logs
+RUN cd build && \
+    lcov --capture --directory . --output-file coverage.info \
+    --rc geninfo_unexecuted_blocks=1 \
+    --ignore-errors mismatch,unused && \
+    lcov --remove coverage.info \
+    '/usr/*' \
+    '*/googletest/*' \
+    '*/test/*' \
+    --output-file coverage.info \
+    --ignore-errors unused && \
+    genhtml coverage.info --output-directory coverage_report \
+    --ignore-errors unmapped,unused
 
-ENTRYPOINT ["./solver"]
-
+CMD ["bash"]

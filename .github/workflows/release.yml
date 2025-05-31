@@ -1,49 +1,88 @@
-name: Release solver
+name: Release Build
 
 on:
-  push:
-    tags:
-      - "*" 
-
-permissions:
-  contents: write  
+  release:
+    types: [published]
 
 jobs:
-  build-packages:
+  build-linux:
+    name: Build on Linux
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v3
-
-      - name: Set up CMake
-        uses: jwlawson/actions-setup-cmake@v1
-
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Install dependencies
         run: |
-          sudo apt update
-          sudo apt install -y cmake rpm dpkg-dev
-
-      - name: Configure build
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake dpkg-dev rpm
+      - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build solver
-        run: cmake --build build --target solver
-
-      - name: Package with CPack
+      - name: Build
+        run: cmake --build build --config Release --parallel $(nproc)
+      - name: Package
         run: |
           cd build
+          cpack -G TGZ
           cpack -G DEB
           cpack -G RPM
-          cpack -G ZIP
-
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v1
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: |
+          name: linux-release
+          path: |
+            build/*.tar.gz
             build/*.deb
             build/*.rpm
-            build/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup WiX
+        run: |
+          choco install wixtoolset -y
+          echo "WIX=C:\Program Files (x86)\WiX Toolset v3.11\bin" >> $env:GITHUB_ENV
+      - name: Prepare license
+        shell: pwsh
+        run: |
+          if (!(Test-Path "LICENSE.rtf")) { " " | Out-File -Encoding ASCII "LICENSE.rtf" }
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Package
+        run: |
+          cd build
+          cpack -G WIX -C Release -V --debug
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: build/*.msi
+          if-no-files-found: warn
+
+  build-macos:
+    name: Build on macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release --parallel 2
+      - name: Package
+        run: |
+          cd build
+          cpack -G DragNDrop
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: build/*.dmg
+          if-no-files-found: warn

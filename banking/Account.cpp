@@ -1,16 +1,22 @@
-#include "Account.hpp"
+#include "Account.h"
 
-Account::Account(double initial) : balance(initial) {}
+#include <stdexcept>
 
-void Account::deposit(double amount) {
-    balance += amount;
+Account::Account(int id, int balance)
+    : id_(id), balance_(balance), is_locked_(false) {}
+
+Account::~Account() {}
+
+int Account::GetBalance() const { return balance_; }
+
+void Account::ChangeBalance(int diff) {
+  if (!is_locked_) throw std::runtime_error("at first lock the account");
+  balance_ += diff;
 }
 
-void Account::withdraw(double amount) {
-    balance -= amount;
+void Account::Lock() {
+  if (is_locked_) throw std::runtime_error("already locked");
+  is_locked_ = true;
 }
 
-double Account::getBalance() const {
-    return balance;
-}
-
+void Account::Unlock() { is_locked_ = false; }
